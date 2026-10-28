@@ -114,14 +114,13 @@ curl -X POST http://127.0.0.1:8000/api/onboarding/quick-start \
 ## Data and privacy
 
 - `data/linkedin_session.json` stores local auth-state information; it is excluded from version control. The existing timestamp-based session status is **not** a secure session-verification mechanism.
-- Never commit real AWS keys, LinkedIn credentials, `.env`, deployment logs, or generated infrastructure outputs.
+- Real AWS keys, LinkedIn credentials, `.env`, deployment logs, or generated infrastructure outputs are not part of this upload.
 - LinkedIn access and scraping are subject to service availability, policy and rate limits; no guarantee is made that every request returns fresh postings.
 - UT Dallas catalog descriptions may be copyrighted. The original dataset is not published here pending redistribution review. The university's current official course catalog is at <https://catalog.utdallas.edu/>.
 
 ## Known limitations
 
 - No automated end-to-end test suite or verified production deployment is included in this review.
-- Career matching currently uses rule-based fallback logic for part of its analysis; having AWS credentials does not mean every recommendation comes from an LLM.
 - Without the licensed/authorized local course dataset, course lookups and matches will be incomplete.
 - Job-scraper/browser interaction may require manual LinkedIn sign-in, may fail in headless deployments, and should not be treated as an authenticated production service.
 - AWS CDK deployment configuration needs a separate infrastructure/security review and is not part of the recommended initial release.
