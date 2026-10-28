@@ -2,7 +2,7 @@
 
 This repository does **not** distribute UT Dallas course descriptions or LinkedIn authentication/session data.
 
-For local runs only, `CourseCatalogAgent` reads `data/utd_courses.json` containing a top-level `courses` array. You must obtain or create course data you have the right to use. The developer's original private file contains 2,470 course records.
+The original project includes a dataset (utd_courses.json) containing 2,470 course records from the UT Dallas. This dataset is maintained locally and excluded from the public repository pending verification of redistribution permissions.
 
 The application will start without this catalog, but course search and course recommendations may return no results. The source code currently expects several normalized fields (`course_code`, `department`, `skills`) which may be missing from the original raw scrape and therefore require normalization before certain filters work fully.
 
