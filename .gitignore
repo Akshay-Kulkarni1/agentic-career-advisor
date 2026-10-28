@@ -385,8 +385,6 @@ cdk.out
 cdk.out/
 data/job_cache
 data/job_cache/
-aws
-aws/
 *.pem
 
 
@@ -409,6 +407,7 @@ data/linkedin_session.json
 
 # Deployment outputs (AWS infrastructure)
 deployment-outputs.txt
+deployment-info.txt
 
 # AWS CDK generated files
 cdk.out/
@@ -452,3 +451,6 @@ data/job_cache/
 # Challenge reference documents
 challenge_topic.pdf
 submission_guidelines.pdf
+
+# Data
+data/utd_courses.json

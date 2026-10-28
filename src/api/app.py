@@ -24,13 +24,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "*"  # Allow all origins for production CloudFront deployment
-    ],
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,7 +99,7 @@ async def root():
             "/auth/linkedin",
             "/auth/status", 
             "/auth/logout",
-            
+
             # Career Guidance
             "/api/career-guidance",
             "/api/onboarding/quick-start",
@@ -111,17 +108,17 @@ async def root():
             "/api/onboarding/suggest-careers",
             "/api/onboarding/validate-profile",
             "/api/onboarding/smart-questions/{career_goal}",
-            
+
             # Job Market & Courses
             "/job-market",
             "/course-search",
             "/api/courses/all",
-            
+
             # Projects & Agents
             "/api/project-recommendations",
             "/api/agents/status",
             "/agent-capabilities",
-            
+
             # System
             "/health",
             "/api/stats",
@@ -136,7 +133,7 @@ async def health_check():
     """Health check endpoint for monitoring"""
     return {
         "status": "healthy",
-        "bedrock": "connected",
+        "bedrock": "not_checked",
         "timestamp": datetime.utcnow().isoformat()
     }
 
@@ -187,7 +184,7 @@ async def get_career_guidance(request: CareerQueryRequest):
     """
     Main endpoint: Process career query and return guidance.
     Requires LinkedIn authentication for real job market data.
-    
+
     Example request:
     {
         "query": "I want to become a data scientist",
@@ -200,9 +197,9 @@ async def get_career_guidance(request: CareerQueryRequest):
             status_code=401, 
             detail="LinkedIn authentication required. Please authenticate first using /auth/linkedin"
         )
-    
+
     start_time = datetime.utcnow()
-    
+
     try:
         # Call orchestrator agent
         result = await orchestrator.process_request({
@@ -210,11 +207,11 @@ async def get_career_guidance(request: CareerQueryRequest):
             "career_goal": request.query,
             "location": request.location
         })
-        
+
         # Calculate processing time
         end_time = datetime.utcnow()
         processing_time = (end_time - start_time).total_seconds()
-        
+
         return CareerQueryResponse(
             success=True,
             career_goal=result.get('career_goal'),
@@ -224,7 +221,7 @@ async def get_career_guidance(request: CareerQueryRequest):
             next_steps=result.get('project_recommendations'),
             processing_time_seconds=round(processing_time, 2)
         )
-        
+
     except Exception as e:
         print(f"Error processing query: {e}")
         raise HTTPException(
@@ -242,7 +239,7 @@ async def get_job_market_analysis(request: JobMarketRequest):
             status_code=401, 
             detail="LinkedIn authentication required for real job market data. Please authenticate first using /auth/linkedin"
         )
-    
+
     try:
         orchestrator_request = {
             "request_type": "job_market_analysis",
@@ -285,15 +282,15 @@ async def get_all_courses():
 async def get_project_recommendations(request: ProjectRecommendationRequest):
     """
     Get personalized project recommendations to build portfolio and skills
-    
+
     **Why Projects Matter:**
     - Create tangible portfolio pieces for job applications
     - Demonstrate practical skills to employers
     - Reinforce theoretical knowledge from courses
     - Show initiative and self-directed learning
-    
+
     **Returns**: 3-5 project ideas with difficulty levels, timelines, and skill mappings
-    
+
     **Example Request Body:**
     ```json
     {
@@ -311,12 +308,12 @@ async def get_project_recommendations(request: ProjectRecommendationRequest):
                 status_code=400, 
                 detail="career_goal is required and cannot be empty. Please provide a valid career goal like 'Data Scientist', 'Software Engineer', etc."
             )
-        
+
         # Ensure lists are not None
         current_skills = request.current_skills or []
         target_skills = request.target_skills or []
         recommended_courses = request.recommended_courses or []
-        
+
         orchestrator_request = {
             "request_type": "project_recommendations",
             "career_goal": request.career_goal.strip(),
@@ -325,10 +322,10 @@ async def get_project_recommendations(request: ProjectRecommendationRequest):
             "skill_level": request.skill_level or "intermediate",
             "recommended_courses": recommended_courses
         }
-        
+
         result = await orchestrator.process_request(orchestrator_request)
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -353,7 +350,7 @@ async def get_agent_status():
 async def get_onboarding_options():
     """
     Get all available options for user onboarding forms
-    
+
     Returns predefined options for dropdowns, multi-selects, etc.
     """
     return {
@@ -372,7 +369,7 @@ async def get_onboarding_options():
 async def quick_start_career_guidance(profile: QuickStartProfile):
     """
     Quick start career guidance with minimal information
-    
+
     Perfect for users who want to get started immediately with just:
     - Career goal
     - Current skills (optional)
@@ -389,10 +386,10 @@ async def quick_start_career_guidance(profile: QuickStartProfile):
             "completed_courses": [],  # Will be inferred
             "experience_level": "intermediate"  # Default
         }
-        
+
         # Get comprehensive career guidance
         result = await orchestrator.process_request(career_request)
-        
+
         # Add quick start context
         result["quick_start"] = True
         result["profile_completeness"] = "minimal"
@@ -401,9 +398,9 @@ async def quick_start_career_guidance(profile: QuickStartProfile):
             "Check the job market insights for your career goal",
             "Consider completing your profile for more personalized advice"
         ]
-        
+
         return result
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quick start failed: {str(e)}")
 
@@ -411,13 +408,13 @@ async def quick_start_career_guidance(profile: QuickStartProfile):
 async def comprehensive_career_guidance(profile: ComprehensiveUserProfile):
     """
     Comprehensive career guidance with full user profile
-    
+
     Uses all available information for highly personalized recommendations
     """
     try:
         # Validate profile completeness
         validation = onboarding_service.validate_profile(profile)
-        
+
         # Convert comprehensive profile to career advice request
         career_request = {
             "request_type": "career_advice",
@@ -427,21 +424,21 @@ async def comprehensive_career_guidance(profile: ComprehensiveUserProfile):
             "completed_courses": profile.completed_courses,
             "experience_level": profile.skill_level.value
         }
-        
+
         # Get comprehensive career guidance
         result = await orchestrator.process_request(career_request)
-        
+
         # Add comprehensive context and validation results
         result["profile_validation"] = validation.dict()
         result["comprehensive"] = True
         result["personalization_level"] = "high"
-        
+
         # Add smart follow-up questions if profile is incomplete
         if not validation.is_valid or validation.completeness_score < 80:
             result["smart_questions"] = onboarding_service.generate_smart_questions(profile)
-        
+
         return result
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comprehensive guidance failed: {str(e)}")
 
@@ -449,7 +446,7 @@ async def comprehensive_career_guidance(profile: ComprehensiveUserProfile):
 async def suggest_career_goals(major: str, interests: List[str] = []):
     """
     Suggest career goals based on major and interests
-    
+
     Helps users discover relevant career paths
     """
     try:
@@ -478,14 +475,14 @@ async def validate_user_profile(profile: ComprehensiveUserProfile):
 async def get_smart_questions(career_goal: str):
     """
     Get smart follow-up questions based on career goal
-    
+
     Helps guide users through profile completion
     """
     try:
         # Create a minimal profile with just the career goal
         profile = ComprehensiveUserProfile(career_goal=career_goal)
         questions = onboarding_service.generate_smart_questions(profile)
-        
+
         return {
             "career_goal": career_goal,
             "questions": questions,

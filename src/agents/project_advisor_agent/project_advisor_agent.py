@@ -10,20 +10,20 @@ from src.core.aws.bedrock_service import BedrockService
 class ProjectAdvisorAgent:
     """
     AI Agent that recommends practical projects to build skills
-    
+
     Uses AWS Bedrock Claude Haiku for cost-effective, intelligent project suggestions
     that align with career goals, course curriculum, and job market demands.
     """
-    
+
     def __init__(self):
         """Initialize the Project Advisor Agent with Bedrock LLM"""
         self.bedrock_service = BedrockService()
         self.agent_name = "Project Advisor Agent"
-    
+
     async def process_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate personalized project recommendations
-        
+
         Args:
             request: Dict containing:
                 - career_goal (str): Target career (e.g., "Data Scientist")
@@ -31,7 +31,7 @@ class ProjectAdvisorAgent:
                 - target_skills (List[str]): Skills to develop from job market
                 - recommended_courses (List[Dict]): Courses the user should take
                 - skill_level (str): beginner/intermediate/advanced
-                
+
         Returns:
             Dict with project recommendations and explanations
         """
@@ -40,9 +40,9 @@ class ProjectAdvisorAgent:
         target_skills = request.get("target_skills", [])
         recommended_courses = request.get("recommended_courses", [])
         skill_level = request.get("skill_level", "intermediate")
-        
+
         print(f"\n🎯 {self.agent_name} analyzing project needs for: {career_goal}")
-        
+
         try:
             # Generate LLM-powered project recommendations
             projects = await self._generate_project_recommendations(
@@ -52,7 +52,7 @@ class ProjectAdvisorAgent:
                 recommended_courses=recommended_courses,
                 skill_level=skill_level
             )
-            
+
             return {
                 "success": True,
                 "career_goal": career_goal,
@@ -61,12 +61,12 @@ class ProjectAdvisorAgent:
                 "total_projects": len(projects),
                 "implementation_timeline": self._estimate_timeline(projects)
             }
-            
+
         except Exception as e:
             print(f"⚠️ Error generating project recommendations: {e}")
             # Fallback to rule-based recommendations
             return self._get_fallback_projects(career_goal, target_skills, skill_level)
-    
+
     async def _generate_project_recommendations(
         self,
         career_goal: str,
@@ -77,7 +77,7 @@ class ProjectAdvisorAgent:
     ) -> List[Dict[str, Any]]:
         """
         Use AWS Bedrock Claude Haiku to generate intelligent project recommendations
-        
+
         Returns:
             List of project recommendations with details
         """
@@ -85,7 +85,7 @@ class ProjectAdvisorAgent:
         prompt = self._create_project_prompt(
             career_goal, current_skills, target_skills, recommended_courses, skill_level
         )
-        
+
         try:
             # Call Bedrock LLM
             response = await self.bedrock_service.invoke_model_async(
@@ -93,21 +93,23 @@ class ProjectAdvisorAgent:
                 max_tokens=2000,
                 temperature=0.7  # Slightly creative for project ideas
             )
-            
+
             # Parse LLM response
-            projects = self._parse_project_response(response)
-            
+            projects = self._parse_project_response(
+                response.get("content", "") if isinstance(response, dict) else response
+            )
+
             if projects:
                 print(f"✅ Generated {len(projects)} LLM-powered project recommendations")
                 return projects
             else:
                 print("⚠️ LLM response parsing failed, using fallback")
                 return self._get_rule_based_projects(career_goal, target_skills, skill_level)
-                
+
         except Exception as e:
             print(f"⚠️ LLM invocation failed: {e}, using fallback")
             return self._get_rule_based_projects(career_goal, target_skills, skill_level)
-    
+
     def _create_project_prompt(
         self,
         career_goal: str,
@@ -117,9 +119,9 @@ class ProjectAdvisorAgent:
         skill_level: str
     ) -> str:
         """Create a detailed prompt for the LLM"""
-        
+
         course_names = [course.get("title", course.get("course_code", "")) for course in recommended_courses[:5]]
-        
+
         prompt = f"""You are an expert career advisor helping a student become a {career_goal}.
 
 **Student Profile:**
@@ -158,9 +160,9 @@ class ProjectAdvisorAgent:
 ```
 
 Generate exactly 4 projects. Make them specific, practical, and aligned with {career_goal} job requirements."""
-        
+
         return prompt
-    
+
     def _parse_project_response(self, response: str) -> List[Dict[str, Any]]:
         """Parse LLM response into structured project recommendations"""
         try:
@@ -182,9 +184,9 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     json_str = response[json_start:json_end]
                 else:
                     return []
-            
+
             projects = json.loads(json_str)
-            
+
             # Validate and enhance project data
             validated_projects = []
             for i, project in enumerate(projects):
@@ -203,13 +205,13 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                         "source": "LLM-Generated"
                     }
                     validated_projects.append(validated_project)
-            
+
             return validated_projects
-            
+
         except Exception as e:
             print(f"⚠️ Error parsing LLM response: {e}")
             return []
-    
+
     def _get_rule_based_projects(
         self,
         career_goal: str,
@@ -217,9 +219,9 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
         skill_level: str
     ) -> List[Dict[str, Any]]:
         """Fallback: Rule-based project recommendations"""
-        
+
         career_lower = career_goal.lower()
-        
+
         # Project templates by career type
         if "data scientist" in career_lower or "data analyst" in career_lower:
             projects = [
@@ -260,7 +262,7 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     "source": "Rule-Based"
                 }
             ]
-        
+
         elif "financial analyst" in career_lower or "finance" in career_lower:
             projects = [
                 {
@@ -300,7 +302,7 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     "source": "Rule-Based"
                 }
             ]
-        
+
         elif "software" in career_lower or "developer" in career_lower:
             projects = [
                 {
@@ -340,7 +342,7 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     "source": "Rule-Based"
                 }
             ]
-        
+
         elif "neuroscience" in career_lower or "neuro" in career_lower:
             projects = [
                 {
@@ -380,7 +382,7 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     "source": "Rule-Based"
                 }
             ]
-        
+
         else:
             # Generic projects
             projects = [
@@ -421,15 +423,15 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
                     "source": "Rule-Based"
                 }
             ]
-        
+
         # Adjust difficulty based on skill level
         if skill_level == "beginner":
             projects = [p for p in projects if p["difficulty"] in ["beginner", "intermediate"]]
         elif skill_level == "advanced":
             projects = [p for p in projects if p["difficulty"] in ["intermediate", "advanced"]]
-        
+
         return projects[:4]  # Return max 4 projects
-    
+
     def _get_fallback_projects(
         self,
         career_goal: str,
@@ -438,7 +440,7 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
     ) -> Dict[str, Any]:
         """Return fallback response when everything fails"""
         projects = self._get_rule_based_projects(career_goal, target_skills, skill_level)
-        
+
         return {
             "success": True,
             "career_goal": career_goal,
@@ -448,20 +450,20 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
             "implementation_timeline": self._estimate_timeline(projects),
             "note": "Using rule-based project recommendations"
         }
-    
+
     def _estimate_timeline(self, projects: List[Dict[str, Any]]) -> str:
         """Estimate total time to complete all projects"""
         total_weeks = sum(p.get("duration_weeks", 4) for p in projects)
         months = total_weeks // 4
         remaining_weeks = total_weeks % 4
-        
+
         if months > 0 and remaining_weeks > 0:
             return f"{months} months and {remaining_weeks} weeks"
         elif months > 0:
             return f"{months} months"
         else:
             return f"{total_weeks} weeks"
-    
+
     def get_capabilities(self) -> Dict[str, Any]:
         """Return agent capabilities"""
         return {
@@ -476,4 +478,3 @@ Generate exactly 4 projects. Make them specific, practical, and aligned with {ca
             "llm_model": "Claude 3 Haiku (via AWS Bedrock)",
             "fallback": "Rule-based project templates"
         }
-
